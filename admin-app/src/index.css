@@ -1,0 +1,16 @@
+@import "tailwindcss";
+@source "./src";
+
+@custom-variant dark (.dark &);
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+@layer base {
+  body {
+    @apply bg-gray-100 text-gray-900 font-sans antialiased;
+  }
+}
