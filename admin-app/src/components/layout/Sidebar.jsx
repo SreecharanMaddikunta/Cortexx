@@ -1,16 +1,10 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { Map, FileText, BellRing, Users, Settings, LogOut, Sun, Moon, PieChart } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 
 const Sidebar = ({ closeSidebar }) => {
   const { isDark, toggleTheme } = useTheme();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    localStorage.removeItem('cortexx_admin_auth');
-    navigate('/login');
-  };
 
   const navItems = [
     { name: 'GIS Dashboard', path: '/', icon: <Map size={20} /> },
@@ -54,7 +48,7 @@ const Sidebar = ({ closeSidebar }) => {
           {isDark ? <Sun size={20} className="mr-3" /> : <Moon size={20} className="mr-3" />}
           {isDark ? 'Light Mode' : 'Dark Mode'}
         </button>
-        <button onClick={handleLogout} className="flex items-center text-gray-400 hover:text-white w-full transition-colors">
+        <button className="flex items-center text-gray-400 hover:text-white w-full transition-colors">
           <LogOut size={20} className="mr-3" />
           Secure Logout
         </button>

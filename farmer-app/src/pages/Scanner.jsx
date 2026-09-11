@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, X, UploadCloud, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Camera, X, UploadCloud, Loader2, Image as ImageIcon, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 
@@ -34,41 +34,31 @@ const Scanner = () => {
     if (stream) stream.getTracks().forEach(track => track.stop());
   };
 
+  const [validationError, setValidationError] = useState(null); // Stores the full error object
+
   const processImage = async (base64Image) => {
     setIsScanning(true);
+    setValidationError(null);
+    setErrorMsg('');
     stopCamera();
     
     try {
       const response = await axios.post('http://localhost:5000/api/scans/process', {
         imageBase64: base64Image,
-        cropType: 'Tomato'
+        cropType: 'Tomato' // Hardcoded for MVP, ideally passed from context
       });
       
-      if (response.data.isInvalid) {
-        const invalidReport = {
-           disease: "Invalid Photo Detected",
-           confidence: 1.0,
-           imageUrl: base64Image,
-           detailedReport: {
-              disease: "Invalid Photo Detected",
-              confidence: 1.0,
-              explanation: response.data.message,
-              immediateSteps: [
-                "Please capture a clear, well-lit photo of the affected plant leaf or crop.", 
-                "Ensure the plant fills most of the frame."
-              ],
-              whatToCheck: [],
-              futureInsights: "The AI gatekeeper rejected this image because it could not find sufficient biological plant colors or structures."
-           }
-        };
-        navigate('/diagnosis', { state: { report: invalidReport } });
-        return;
+      setIsScanning(false);
+      
+      if (response.data.success) {
+        // Valid diagnosis
+        navigate('/diagnosis', { state: { report: response.data.report } });
+      } else {
+        // Validation failed (INVALID_IMAGE, UNSUPPORTED_CROP, LOW_CONFIDENCE, POOR_IMAGE_QUALITY)
+        navigate('/diagnosis', { state: { errorData: response.data } });
       }
-
-      // Navigate to detailed report and pass the report data via state
-      navigate('/diagnosis', { state: { report: response.data.report } });
     } catch (error) {
-      setErrorMsg("Failed to connect to AI Server.");
+      setErrorMsg("AI service is currently unavailable. Please try again.");
       setIsScanning(false);
     }
   };
@@ -140,7 +130,11 @@ const Scanner = () => {
           <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-30 backdrop-blur-sm">
             <Loader2 size={64} className="text-green-500 animate-spin mb-4" />
             <h2 className="text-2xl font-bold text-white tracking-widest">ANALYZING</h2>
-            <p className="text-green-300 mt-2 font-mono">Running AI diagnostics...</p>
+            <div className="text-green-300 mt-2 font-mono flex flex-col items-center">
+               <p>✓ Checking image quality</p>
+               <p>⏳ Detecting crop</p>
+               <p>○ Analyzing disease</p>
+            </div>
           </div>
         )}
       </div>

@@ -26,16 +26,17 @@ const processScan = async (req, res) => {
     }
     const diagnosis = await mlResponse.json();
 
-    // Prevent saving invalid images to the database
-    if (diagnosis.isInvalid) {
+    // If validation failed in the ML layer, do not save a fake report. Return error safely to frontend.
+    if (diagnosis.status && diagnosis.status !== "DIAGNOSIS_AVAILABLE") {
       return res.json({ 
         success: false, 
-        isInvalid: true, 
-        message: diagnosis.explanation 
+        status: diagnosis.status, 
+        message: diagnosis.message,
+        detailedReport: diagnosis // Send the full payload back for the frontend to handle
       });
     }
 
-    // Save history persistently to SQLite
+    // Save history persistently to SQLite for valid diagnoses
     const activeCrop = await prisma.crop.findFirst({
       where: {
         farmerId: farmerId,
@@ -47,8 +48,8 @@ const processScan = async (req, res) => {
       data: {
         farmerId: farmerId,
         cropId: activeCrop ? activeCrop.id : null,
-        disease: diagnosis.disease,
-        confidence: diagnosis.confidence,
+        disease: diagnosis.disease || "Unknown",
+        confidence: diagnosis.confidence || 0,
         imageUrl: imageBase64.substring(0, 50) + "...", 
         detailedReport: JSON.stringify(diagnosis)
       }
@@ -60,7 +61,8 @@ const processScan = async (req, res) => {
       data: { imageUrl: imageBase64 }
     });
 
-    res.json({ success: true, report: { ...report, imageUrl: imageBase64, detailedReport: diagnosis } });
+    // Pass the standard status back to frontend
+    res.json({ success: true, status: "DIAGNOSIS_AVAILABLE", report: { ...report, imageUrl: imageBase64, detailedReport: diagnosis } });
 
   } catch (error) {
     console.error(error);
@@ -86,29 +88,5 @@ const getScanHistory = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch history" });
   }
 };
-const deleteScan = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const farmerId = req.user?.id || 1;
-    
-    // Verify ownership before deleting
-    const scan = await prisma.report.findFirst({
-      where: { id: parseInt(id), farmerId }
-    });
 
-    if (!scan) {
-      return res.status(404).json({ error: "Scan not found or unauthorized" });
-    }
-
-    await prisma.report.delete({
-      where: { id: parseInt(id) }
-    });
-
-    res.json({ success: true, message: "Scan history deleted successfully" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to delete scan" });
-  }
-};
-
-module.exports = { processScan, getScanHistory, deleteScan };
+module.exports = { processScan, getScanHistory };

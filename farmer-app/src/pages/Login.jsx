@@ -69,7 +69,7 @@ const Login = () => {
         className="w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-3xl shadow-2xl relative z-10 overflow-hidden"
       >
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">Kisan Mitra</h1>
+          <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">AgriVision AI</h1>
           <p className="text-green-100 font-medium">Smart Crop Management</p>
         </div>
 

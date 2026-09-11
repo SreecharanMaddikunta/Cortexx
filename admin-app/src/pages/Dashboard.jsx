@@ -1,12 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle } from 'react-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import { ShieldAlert, RefreshCw, Layers, MapPin } from 'lucide-react';
 import HeatmapLayer from '../components/HeatmapLayer';
 
+// Create a small custom pointer icon
+const smallIcon = new L.Icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [16, 26],
+  iconAnchor: [8, 26],
+  popupAnchor: [1, -22],
+  shadowSize: [26, 26]
+});
+
+const redIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [16, 26],
+  iconAnchor: [8, 26],
+  popupAnchor: [1, -22],
+  shadowSize: [26, 26]
+});
+
 const Dashboard = () => {
-  const [allReports, setAllReports] = useState([]);
+  const [mapReports, setMapReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('markers'); // 'markers' or 'heatmap'
   const [filterCrop, setFilterCrop] = useState('All');
@@ -17,24 +38,13 @@ const Dashboard = () => {
   const fetchMapData = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`http://localhost:5000/api/admin/map`);
-      
-      // Inject beautifully scattered mock data around Pune (18.5204, 73.8567)
-      const mockData = [
-        { id: 'mock-corn-1', lat: 18.5400, lng: 73.8200, disease: 'Northern Leaf Blight', cropName: 'Sweet Corn', farmerName: 'Amit Patel', farmerPhone: '9876543210', confidence: '92%', severity: 'Medium', createdAt: new Date().toISOString() },
-        { id: 'mock-corn-2', lat: 18.4900, lng: 73.8800, disease: 'Corn Smut', cropName: 'Field Corn', farmerName: 'Rahul Singh', farmerPhone: '9876543211', confidence: '88%', severity: 'Low', createdAt: new Date().toISOString() },
-        { id: 'mock-wheat-1', lat: 18.5600, lng: 73.8900, disease: 'Wheat Rust', cropName: 'Winter Wheat', farmerName: 'Sneha Desai', farmerPhone: '9876543212', confidence: '95%', severity: 'High', createdAt: new Date().toISOString() },
-        { id: 'mock-wheat-2', lat: 18.4800, lng: 73.8100, disease: 'Powdery Mildew', cropName: 'Spring Wheat', farmerName: 'Vikram Joshi', farmerPhone: '9876543213', confidence: '81%', severity: 'Medium', createdAt: new Date().toISOString() },
-        { id: 'mock-cotton-1', lat: 18.5100, lng: 73.9200, disease: 'Cotton Boll Rot', cropName: 'Cotton', farmerName: 'Priya Sharma', farmerPhone: '9876543214', confidence: '89%', severity: 'High', createdAt: new Date().toISOString() },
-        { id: 'mock-cotton-2', lat: 18.5300, lng: 73.7800, disease: 'Leaf Curl Virus', cropName: 'Cotton', farmerName: 'Rajesh Kumar', farmerPhone: '9876543215', confidence: '94%', severity: 'High', createdAt: new Date().toISOString() },
-        { id: 'mock-tomato-1', lat: 18.5500, lng: 73.8500, disease: 'Early Blight', cropName: 'Tomato', farmerName: 'Anjali Verma', farmerPhone: '9876543216', confidence: '85%', severity: 'Medium', createdAt: new Date().toISOString() },
-      ];
-
-      setAllReports([...res.data, ...mockData]);
+      setMapReports([]); // Clear data briefly for visual refresh feedback
+      const res = await axios.get(`http://localhost:5000/api/admin/map?crop=${filterCrop !== 'All' ? filterCrop : ''}`);
+      setTimeout(() => setMapReports(res.data), 300); // slight delay for visual effect
     } catch (err) {
       console.error("Failed to load map data:", err);
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 300);
     }
   };
 
@@ -42,34 +52,12 @@ const Dashboard = () => {
     fetchMapData();
     const interval = setInterval(fetchMapData, 6000);
     return () => clearInterval(interval);
-  }, []); // Run once on mount, no longer dependent on filterCrop
-
-  // Define strict categories
-  const CATEGORIES = ['Tomato', 'Corn', 'Wheat', 'Cotton'];
-
-  // Helper to classify crop names
-  const classifyCrop = (name) => {
-      if (!name) return 'Other';
-      const lower = name.toLowerCase();
-      if (lower.includes('tomat')) return 'Tomato';
-      if (lower.includes('corn')) return 'Corn';
-      if (lower.includes('wheat')) return 'Wheat';
-      if (lower.includes('cotton')) return 'Cotton';
-      return 'Other';
-  };
-
-  // 1. STRICT FILTERING: Hide anything that is not one of the 4 core crops
-  const cleanData = allReports.filter(r => classifyCrop(r.cropName) !== 'Other');
-
-  // 2. Calculate which reports to show on map based on dropdown
-  const mapReports = filterCrop === 'All' 
-    ? cleanData 
-    : cleanData.filter(r => classifyCrop(r.cropName) === filterCrop);
+  }, [filterCrop]); // refetch when filter changes
 
   const highRiskCount = mapReports.filter(r => r.severity === 'High').length;
   
-  // Hardcode the unique crops to only show our strict categories (plus 'All')
-  const uniqueCrops = ['All', ...CATEGORIES];
+  // Use a strictly clean list of crop names for the dropdown
+  const uniqueCrops = ['All', 'Tomato', 'Wheat', 'Corn', 'Cotton'];
 
   return (
     <div className="flex-1 bg-gray-50 dark:bg-gray-900 flex flex-col h-screen overflow-hidden transition-colors duration-200">
@@ -111,7 +99,7 @@ const Dashboard = () => {
 
           <button 
             onClick={fetchMapData} 
-            className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 rounded-lg text-gray-600 dark:text-gray-300 transition"
+            className="p-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 rounded-lg text-gray-600 dark:text-gray-300 transition cursor-pointer"
             title="Refresh Map"
           >
             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
@@ -132,7 +120,11 @@ const Dashboard = () => {
           />
           
           {viewMode === 'markers' && mapReports.map(report => (
-            <Marker key={report.id} position={[report.lat, report.lng]}>
+            <Marker 
+              key={report.id} 
+              position={[report.lat, report.lng]} 
+              icon={report.severity === 'High' ? redIcon : smallIcon}
+            >
               <Popup>
                 <div className="text-sm font-sans p-1">
                   <strong className="text-base text-gray-900">{report.disease}</strong><br/>

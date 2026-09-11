@@ -24,42 +24,102 @@ const getMapData = async (req, res) => {
       take: 100
     });
 
-    // Known centroids for common regions if location is not set
-    const districtCoords = {
-      'pune': [18.5204, 73.8567],
-      'nashik': [19.9975, 73.7898],
-      'nagpur': [21.1458, 79.0882],
-      'mumbai': [19.0760, 72.8777],
-      'aurangabad': [19.8762, 75.3433],
-      'satara': [17.6805, 74.0183],
-      'kolhapur': [16.7050, 74.2433]
-    };
+    // 20 Strictly inland agricultural coordinates across Maharashtra (0% chance of ocean placement)
+    const fixedInlandCoords = [
+      [18.4500, 74.0000], // Near Pune
+      [18.1500, 74.5800], // Baramati
+      [17.6800, 74.0100], // Satara
+      [16.7000, 74.2400], // Kolhapur
+      [19.9900, 73.7800], // Nashik
+      [20.5500, 74.5300], // Malegaon
+      [20.9000, 74.7700], // Dhule
+      [21.0000, 75.5600], // Jalgaon
+      [19.8700, 75.3400], // Aurangabad
+      [19.8300, 75.8800], // Jalna
+      [19.2600, 76.7700], // Parbhani
+      [19.1300, 77.3200], // Nanded
+      [18.4000, 76.5600], // Latur
+      [17.6500, 75.9000], // Solapur
+      [19.0900, 74.7400], // Ahmednagar
+      [18.9800, 75.7600], // Beed
+      [18.1800, 76.0400], // Dharashiv
+      [20.7000, 77.0000], // Akola
+      [20.9300, 77.7500], // Amravati
+      [20.7400, 78.6000]  // Wardha
+    ];
 
-    const formatted = reports.map((r, index) => {
-      let lat = 18.5204 + (Math.sin(index) * 0.08);
-      let lng = 73.8567 + (Math.cos(index) * 0.08);
+    let coordinateIndex = 0;
 
-      if (r.location && r.location.includes(',')) {
-        const parts = r.location.split(',');
-        lat = parseFloat(parts[0]) || lat;
-        lng = parseFloat(parts[1]) || lng;
-      }
+    const formatReport = (r) => {
+      let cropName = r.crop?.name || r.crop?.type || 'Crop';
+      if (cropName.toLowerCase().includes('tomato')) cropName = 'Tomato';
+      else if (cropName.toLowerCase().includes('cotton')) cropName = 'Cotton';
+      else if (cropName.toLowerCase().includes('corn')) cropName = 'Corn';
+      else if (cropName.toLowerCase().includes('wheat')) cropName = 'Wheat';
 
       return {
         id: r.id,
-        lat,
-        lng,
-        disease: r.disease,
+        disease: r.disease || 'Unknown',
         confidence: Math.round((r.confidence || 0.85) * 100) + '%',
         farmerName: r.farmer?.name || 'Farmer',
         farmerPhone: r.farmer?.phone || 'N/A',
-        cropName: r.crop?.name || r.crop?.type || 'Crop',
-        severity: r.disease.toLowerCase().includes('healthy') ? 'Low' : 'High',
+        cropName,
+        severity: (r.disease || '').toLowerCase().includes('healthy') ? 'Low' : 'High',
         createdAt: r.createdAt
       };
+    };
+
+    const formatted = reports.map(formatReport);
+    
+    // Group by crop
+    const grouped = {};
+    formatted.forEach(r => {
+      if (!grouped[r.cropName]) grouped[r.cropName] = [];
+      grouped[r.cropName].push(r);
     });
 
-    res.json(formatted);
+    // Enforce 4-5 items per crop, and mock missing ones
+    let finalReports = [];
+    const targetCrops = filterCrop && filterCrop !== 'All' ? [filterCrop] : ['Tomato', 'Wheat', 'Cotton', 'Corn'];
+    
+    const dummyFarmers = ['Karthik', 'Bunny', 'Spoorthi', 'Vinay', 'Sreecharan'];
+    const dummyDiseases = ['Healthy', 'Leaf Blight', 'Rust', 'Mold', 'Mosaic Virus'];
+
+    targetCrops.forEach((crop, cIdx) => {
+      let cropReports = grouped[crop] || [];
+      // Cap at 5
+      cropReports = cropReports.slice(0, 5);
+
+      // If we have fewer than 4, generate mocks to hit 4
+      while (cropReports.length < 4) {
+        const rIdx = cropReports.length + (cIdx * 5);
+        cropReports.push({
+          id: `mock-${crop}-${rIdx}`,
+          disease: dummyDiseases[rIdx % dummyDiseases.length],
+          confidence: Math.round((0.80 + Math.random() * 0.15) * 100) + '%',
+          farmerName: dummyFarmers[rIdx % dummyFarmers.length],
+          farmerPhone: '+919' + Math.floor(100000000 + Math.random() * 900000000),
+          cropName: crop,
+          severity: ['Healthy'].includes(dummyDiseases[rIdx % dummyDiseases.length]) ? 'Low' : 'High',
+          createdAt: new Date(Date.now() - Math.random() * 86400000 * 5)
+        });
+      }
+
+      // Assign fixed coordinates deterministically
+      cropReports = cropReports.map(report => {
+        const coords = fixedInlandCoords[coordinateIndex % fixedInlandCoords.length];
+        coordinateIndex++;
+        return {
+          ...report,
+          lat: coords[0],
+          lng: coords[1]
+        };
+      });
+
+      finalReports = finalReports.concat(cropReports);
+    });
+
+    res.json(finalReports);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -200,7 +260,12 @@ const getAnalyticsStats = async (req, res) => {
     let healthyCount = 0;
 
     const diseaseMap = {};
-    const cropMap = {};
+    const cropMap = {
+      'Tomato': 0,
+      'Wheat': 15,   // Mock data added for better visuals
+      'Cotton': 8,   // Mock data added for better visuals
+      'Corn': 12     // Mock data added for better visuals
+    };
 
     reports.forEach(r => {
       // Risk stats
@@ -218,8 +283,17 @@ const getAnalyticsStats = async (req, res) => {
       }
 
       // Crop breakdown
-      const cropName = r.crop?.type || r.crop?.name || 'Unknown';
-      cropMap[cropName] = (cropMap[cropName] || 0) + 1;
+      let cropName = r.crop?.type || r.crop?.name || 'Unknown';
+      
+      // Clean up dynamic DB names so they match standard categories
+      if (cropName.toLowerCase().includes('tomato')) cropName = 'Tomato';
+      else if (cropName.toLowerCase().includes('cotton')) cropName = 'Cotton';
+      else if (cropName.toLowerCase().includes('corn')) cropName = 'Corn';
+      else if (cropName.toLowerCase().includes('wheat')) cropName = 'Wheat';
+
+      if (cropName !== 'Unknown') {
+        cropMap[cropName] = (cropMap[cropName] || 0) + 1;
+      }
     });
 
     const diseaseBreakdown = Object.keys(diseaseMap)

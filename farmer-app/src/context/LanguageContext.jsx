@@ -7,7 +7,7 @@ export const useLanguage = () => useContext(LanguageContext);
 const translations = {
   'en-IN': {
     // Header & Nav
-    portalTitle: "Kisan Mitra",
+    portalTitle: "AgriVision AI",
     farmerPortal: "Farmer Portal",
     logout: "Logout",
     greeting: "Namaskaram",

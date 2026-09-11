@@ -7,12 +7,75 @@ const DiagnosisReport = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const report = location.state?.report;
+  const errorData = location.state?.errorData;
 
   useEffect(() => {
-    if (!report) navigate('/dashboard');
-  }, [report, navigate]);
+    if (!report && !errorData) navigate('/dashboard');
+  }, [report, errorData, navigate]);
 
-  if (!report) return null;
+  if (!report && !errorData) return null;
+
+  // Handle Validation Errors Early
+  if (errorData) {
+    const isInvalid = errorData.status === 'INVALID_IMAGE';
+    const isUnsupported = errorData.status === 'UNSUPPORTED_CROP';
+    const isLowConf = errorData.status === 'LOW_CONFIDENCE';
+    const isPoorQuality = errorData.status === 'POOR_IMAGE_QUALITY';
+
+    return (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen bg-gray-100 dark:bg-gray-950 flex flex-col justify-center items-center px-4">
+        <div className="bg-white dark:bg-gray-900 rounded-3xl p-8 max-w-md w-full shadow-2xl text-center border border-gray-200 dark:border-gray-800">
+          <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertTriangle size={40} />
+          </div>
+          
+          <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-4">
+            {isInvalid ? '⚠️ No Crop Detected' : 
+             isUnsupported ? '⚠️ Crop Not Supported' : 
+             (isLowConf || isPoorQuality) ? '⚠️ Unable to Diagnose Confidently' : 
+             'Scan Failed'}
+          </h2>
+
+          {isInvalid && (
+            <div className="text-gray-600 dark:text-gray-400 space-y-4">
+              <p>The uploaded image does not appear to contain a supported crop or plant leaf.</p>
+              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl text-sm">
+                <p className="font-bold mb-2">Please upload a clear photo of:</p>
+                <ul className="grid grid-cols-2 gap-2 text-left w-3/4 mx-auto">
+                  <li>• Wheat</li>
+                  <li>• Cotton</li>
+                  <li>• Corn</li>
+                  <li>• Tomato</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {isUnsupported && (
+            <div className="text-gray-600 dark:text-gray-400 space-y-4">
+              <p>This crop is currently not supported by the AI system.</p>
+              <p className="text-sm bg-gray-50 dark:bg-gray-800 p-3 rounded-xl font-medium">Supported crops: Wheat • Cotton • Corn • Tomato</p>
+            </div>
+          )}
+
+          {(isLowConf || isPoorQuality) && (
+            <div className="text-gray-600 dark:text-gray-400 space-y-4">
+              <p>Please capture a clearer close-up image of the affected crop leaf.</p>
+            </div>
+          )}
+
+          <div className="mt-8 flex flex-col gap-3">
+            <button onClick={() => navigate('/scanner')} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-xl transition active:scale-95">
+              Scan Another Image
+            </button>
+            <button onClick={() => navigate('/dashboard')} className="w-full py-4 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-bold rounded-2xl transition active:scale-95">
+              Return to Dashboard
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   // Use the new detailed structure, or fallback to the legacy structure for old history items
   const details = report.detailedReport || {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Search, Filter, CheckCircle, AlertTriangle, Trash2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Clock, Search, Filter, CheckCircle, AlertTriangle } from 'lucide-react';
+import { motion } from 'framer-motion';
 import axios from 'axios';
 
 const ScanHistory = () => {
@@ -25,22 +25,6 @@ const ScanHistory = () => {
     };
     fetchHistory();
   }, []);
-
-  const handleDelete = async (e, id) => {
-    e.stopPropagation(); // Prevent navigating to report
-    if (!window.confirm("Are you sure you want to permanently delete this scan?")) return;
-    
-    try {
-      const token = localStorage.getItem('farmer_token');
-      await axios.delete(`http://localhost:5000/api/scans/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      // Remove from state instantly
-      setHistory(prev => prev.filter(scan => scan.id !== id));
-    } catch (err) {
-      alert("Failed to delete scan.");
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-32 transition-colors duration-200">
@@ -74,18 +58,16 @@ const ScanHistory = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            <AnimatePresence>
             {history.map((scan, index) => {
                const isHealthy = scan.disease.includes('Healthy');
                return (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ delay: index * 0.05 }}
                   key={scan.id} 
                   onClick={() => navigate('/diagnosis', { state: { report: scan } })}
-                  className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 flex gap-4 cursor-pointer hover:shadow-md transition active:scale-[0.98] relative group"
+                  className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 flex gap-4 cursor-pointer hover:shadow-md transition active:scale-[0.98]"
                 >
                   <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-900 shrink-0 border border-gray-200 dark:border-gray-700">
                     {scan.imageUrl ? (
@@ -98,7 +80,7 @@ const ScanHistory = () => {
                   </div>
                   
                   <div className="flex-1 min-w-0 py-1">
-                    <div className="flex justify-between items-start mb-1 pr-8">
+                    <div className="flex justify-between items-start mb-1">
                       <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${isHealthy ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'}`}>
                         {isHealthy ? 'Healthy' : 'Infected'}
                       </span>
@@ -107,7 +89,7 @@ const ScanHistory = () => {
                       </span>
                     </div>
                     
-                    <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg truncate pr-8">{scan.disease}</h3>
+                    <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg truncate">{scan.disease}</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">Crop: {scan.cropType || 'Unknown'}</p>
                     
                     <div className="flex items-center gap-1 mt-2 text-xs font-bold">
@@ -117,18 +99,9 @@ const ScanHistory = () => {
                        </span>
                     </div>
                   </div>
-                  
-                  {/* Delete Button */}
-                  <button 
-                    onClick={(e) => handleDelete(e, scan.id)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900/40"
-                  >
-                    <Trash2 size={18} />
-                  </button>
                 </motion.div>
                );
             })}
-            </AnimatePresence>
           </div>
         )}
       </div>

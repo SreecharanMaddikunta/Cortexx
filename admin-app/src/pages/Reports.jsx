@@ -9,12 +9,13 @@ const Reports = () => {
   const fetchReports = async () => {
     try {
       setLoading(true);
+      setReports([]); // Brief clear for refresh feedback
       const res = await axios.get('http://localhost:5000/api/admin/reports');
-      setReports(res.data);
+      setTimeout(() => setReports(res.data), 200);
     } catch (err) {
       console.error("Failed to load reports:", err);
     } finally {
-      setLoading(false);
+      setTimeout(() => setLoading(false), 200);
     }
   };
 
@@ -23,6 +24,22 @@ const Reports = () => {
     const interval = setInterval(fetchReports, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleExportCSV = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/admin/analytics/export', { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'scan_reports.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed', err);
+    }
+  };
 
   return (
     <div className="flex-1 bg-gray-50 dark:bg-gray-900 p-4 md:p-8 h-full overflow-y-auto transition-colors duration-200">
@@ -35,11 +52,14 @@ const Reports = () => {
         <div className="flex gap-3">
           <button 
             onClick={fetchReports} 
-            className="flex items-center px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium shadow-sm transition"
+            className="flex items-center px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium shadow-sm transition cursor-pointer"
           >
             <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </button>
-          <button className="flex items-center px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-sm transition-all active:scale-95">
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium shadow-sm transition-all active:scale-95 cursor-pointer"
+          >
             <Download size={18} className="mr-2" /> Export to CSV
           </button>
         </div>
