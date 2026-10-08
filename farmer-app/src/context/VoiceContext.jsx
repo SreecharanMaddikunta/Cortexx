@@ -94,13 +94,26 @@ export const VoiceProvider = ({ children }) => {
 
   // Store conversation context for multi-turn routing
   const conversationContext = useRef({});
+  const audioQueue = useRef([]);
+  const isPlayingQueue = useRef(false);
+  const audioRef = useRef(null);
 
   const handleUserMessage = async (text) => {
     setCurrentTranscript('');
     setChatHistory(prev => [...prev, { role: 'user', text }]);
     
     try {
-      // Send to Backend AI Intent Router
+      setChatHistory(prev => [...prev, { role: 'ai', text: '', status: 'Checking your crops...', lang: selectedLanguage, isStreaming: true }]);
+      
+      // We will update the last element of the array
+      const updateLastMessage = (updates) => {
+        setChatHistory(prev => {
+          const newHistory = [...prev];
+          newHistory[newHistory.length - 1] = { ...newHistory[newHistory.length - 1], ...updates };
+          return newHistory;
+        });
+      };
+
       const response = await fetch('http://localhost:5000/api/voice/intent', {
         method: 'POST',
         headers: {
@@ -114,117 +127,133 @@ export const VoiceProvider = ({ children }) => {
         })
       });
       
-      const data = await response.json();
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let fullReply = '';
       
-      // Update context for next turn (e.g. if awaiting crop selection)
-      if (data.context) {
-        conversationContext.current = data.context;
-      } else {
-        conversationContext.current = {}; // reset
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n\n');
+            for (let line of lines) {
+                if (line.startsWith('data: ')) {
+                    const dataStr = line.replace('data: ', '');
+                    try {
+                        const data = JSON.parse(dataStr);
+                        if (data.type === 'status') {
+                           updateLastMessage({ status: data.message });
+                        } else if (data.type === 'text_chunk') {
+                           fullReply += (fullReply ? ' ' : '') + data.text;
+                           updateLastMessage({ text: fullReply, status: null });
+                           speakSentence(data.text, selectedLanguage);
+                        } else if (data.type === 'ui_data') {
+                           updateLastMessage({ uiData: data.uiData });
+                        } else if (data.type === 'done') {
+                           updateLastMessage({ isStreaming: false });
+                        } else if (data.type === 'error') {
+                           updateLastMessage({ text: "Processing failed: " + data.message, isStreaming: false, status: null });
+                        }
+                    } catch(e) {}
+                }
+            }
+        }
       }
-
-      const replyLang = data.language || selectedLanguage;
-      if (data.language && data.language !== selectedLanguage) {
-        setSelectedLanguage(data.language);
-        if (changeAppLanguage) changeAppLanguage(data.language);
-      }
-
-      setChatHistory(prev => [...prev, { 
-        role: 'ai', 
-        text: data.reply, 
-        lang: replyLang,
-        action: data.action,
-        cropType: data.cropType,
-        delayedScan: data.delayedScan
-      }]);
-      speak(data.reply, replyLang);
-
-      // Execute Action
-      if (data.action === 'OPEN_CAMERA') {
-        setTimeout(() => {
-          // Fallback to window.location since VoiceContext is outside Router
-          window.location.href = '/scanner'; 
-        }, 1500); // Wait for the bot to finish speaking
-      }
-
     } catch (error) {
       console.error(error);
       const fallbackReply = "Sorry, I am having trouble connecting to the network.";
-      setChatHistory(prev => [...prev, { role: 'ai', text: fallbackReply, lang: selectedLanguage }]);
-      speak(fallbackReply, selectedLanguage);
+      setChatHistory(prev => {
+         const newHistory = [...prev];
+         newHistory[newHistory.length - 1] = { role: 'ai', text: fallbackReply, lang: selectedLanguage, isStreaming: false, status: null };
+         return newHistory;
+      });
+      speakSentence(fallbackReply, selectedLanguage);
     }
   };
 
-  const audioRef = useRef(null);
+  const processAudioQueue = async () => {
+    if (isPlayingQueue.current || audioQueue.current.length === 0) return;
+    isPlayingQueue.current = true;
+    setIsSpeaking(true);
+    
+    const {text, lang} = audioQueue.current.shift();
+    
+    try {
+      const audioUrl = `http://localhost:5000/api/voice/tts?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(text)}`;
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
 
-  const speak = (text, lang) => {
-    const targetLang = lang || selectedLanguage;
+      audio.onended = () => {
+        isPlayingQueue.current = false;
+        if (audioQueue.current.length > 0) {
+            processAudioQueue();
+        } else {
+            setIsSpeaking(false);
+        }
+      };
+      
+      audio.onerror = () => {
+        playBrowserSynthesis(text, lang, () => {
+           isPlayingQueue.current = false;
+           if (audioQueue.current.length > 0) processAudioQueue();
+           else setIsSpeaking(false);
+        });
+      };
+      
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          playBrowserSynthesis(text, lang, () => {
+             isPlayingQueue.current = false;
+             if (audioQueue.current.length > 0) processAudioQueue();
+             else setIsSpeaking(false);
+          });
+        });
+      }
+    } catch (err) {
+       isPlayingQueue.current = false;
+       processAudioQueue();
+    }
+  };
 
-    // Stop any existing audio or synthesis
+  const speakSentence = (text, targetLang) => {
+    audioQueue.current.push({text, lang: targetLang});
+    processAudioQueue();
+  };
+
+  const playBrowserSynthesis = (text, targetLang, onComplete) => {
+    if (!synthRef.current) {
+      if (onComplete) onComplete();
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = targetLang;
+    utterance.rate = 0.9;
+    
+    utterance.onend = () => { if (onComplete) onComplete(); };
+    utterance.onerror = () => { if (onComplete) onComplete(); };
+
+    synthRef.current.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    setIsSpeaking(false);
+    audioQueue.current = []; // Clear the queue immediately
+    isPlayingQueue.current = false;
+    
     if (audioRef.current) {
       try {
         audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.src = "";
         audioRef.current = null;
       } catch (e) {}
     }
     if (synthRef.current) {
       synthRef.current.cancel();
     }
-
-    setIsSpeaking(true);
-
-    // Primary High-Fidelity Audio Streamer (Supports natural Telugu, Marathi, Hindi, English natively)
-    try {
-      const audioUrl = `http://localhost:5000/api/voice/tts?lang=${encodeURIComponent(targetLang)}&text=${encodeURIComponent(text)}`;
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-
-      audio.onplay = () => setIsSpeaking(true);
-      audio.onended = () => setIsSpeaking(false);
-      audio.onerror = () => {
-        // Fallback to browser SpeechSynthesis if audio fetch fails
-        playBrowserSynthesis(text, targetLang);
-      };
-
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch((err) => {
-          console.warn("Audio element play error, falling back to SpeechSynthesis:", err);
-          playBrowserSynthesis(text, targetLang);
-        });
-      }
-    } catch (err) {
-      playBrowserSynthesis(text, targetLang);
-    }
-  };
-
-  const playBrowserSynthesis = (text, targetLang) => {
-    if (!synthRef.current) {
-      setIsSpeaking(false);
-      return;
-    }
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = targetLang;
-    utterance.rate = 0.9;
-
-    try {
-      const voices = synthRef.current.getVoices ? synthRef.current.getVoices() : [];
-      if (voices && voices.length > 0) {
-        const langPrefix = targetLang.split('-')[0].toLowerCase();
-        let matchedVoice = voices.find(v => v.lang && v.lang.toLowerCase() === targetLang.toLowerCase());
-        if (!matchedVoice) {
-          matchedVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(langPrefix));
-        }
-        if (matchedVoice) utterance.voice = matchedVoice;
-      }
-    } catch (e) {}
-
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    synthRef.current.speak(utterance);
   };
 
   const changeLanguage = (lang) => {
@@ -241,7 +270,8 @@ export const VoiceProvider = ({ children }) => {
       selectedLanguage,
       changeLanguage,
       startListening, 
-      stopListening 
+      stopListening,
+      stopSpeaking
     }}>
       {children}
     </VoiceContext.Provider>

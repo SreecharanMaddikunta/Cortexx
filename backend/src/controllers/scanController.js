@@ -89,4 +89,33 @@ const getScanHistory = async (req, res) => {
   }
 };
 
-module.exports = { processScan, getScanHistory };
+const deleteScan = async (req, res) => {
+  try {
+    const farmerId = req.user?.id || 1;
+    const { id } = req.params;
+
+    // Verify ownership
+    const report = await prisma.report.findUnique({
+      where: { id: parseInt(id) }
+    });
+
+    if (!report) {
+      return res.status(404).json({ error: "Scan not found" });
+    }
+
+    if (report.farmerId !== farmerId) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    await prisma.report.delete({
+      where: { id: parseInt(id) }
+    });
+
+    res.json({ message: "Scan deleted successfully" });
+  } catch (error) {
+    console.error("Delete scan error:", error);
+    res.status(500).json({ error: "Failed to delete scan" });
+  }
+};
+
+module.exports = { processScan, getScanHistory, deleteScan };

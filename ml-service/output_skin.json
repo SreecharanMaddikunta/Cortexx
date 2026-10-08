@@ -1,0 +1,1 @@
+{"success": false, "status": "INVALID_IMAGE", "is_valid_image": false, "crop_detected": false, "crop_type": null, "disease": null, "confidence": 0, "message": "No supported crop or plant leaf was detected. Please upload a clear photo of wheat, cotton, corn, or tomato."}

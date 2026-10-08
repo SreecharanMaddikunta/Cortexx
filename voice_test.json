@@ -1,0 +1,46 @@
+[
+  {
+    "input": "నా మక్కజొన్న పంట ఎలా ఉంది?",
+    "language": null,
+    "reply": null,
+    "context": null
+  },
+  {
+    "input": "మక్కజొన్న ఎలా ఉంది",
+    "language": null,
+    "reply": null,
+    "context": null
+  },
+  {
+    "input": "मेरी मक्का ठीक है?",
+    "language": null,
+    "reply": null,
+    "context": null
+  },
+  {
+    "input": "माझा crop कसा आहे?",
+    "language": null,
+    "reply": null,
+    "context": null
+  },
+  {
+    "input": "How are all my crops?",
+    "language": null,
+    "reply": null,
+    "context": null
+  },
+  {
+    "input": "నా crops అన్నీ ఎలా ఉన్నాయి?",
+    "language": null,
+    "reply": null,
+    "context": null
+  },
+  {
+    "input": "దానికి ఏమైనా వ్యాధి ఉందా?",
+    "language": "te-IN",
+    "reply": "అవును, మీ మొక్కజొన్న పంటకు Corn Ear / Kernel Mold — likely Fusarium Ear Rot సోకినట్లు గుర్తించాము. నివారణ చర్యల కోసం డాష్‌బోర్డ్ చూడండి.",
+    "context": {
+      "lastCrop": "Corn"
+    }
+  }
+]

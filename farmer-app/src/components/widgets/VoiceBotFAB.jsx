@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useVoice } from '../../context/VoiceContext';
-import { Mic, MicOff, Volume2, X, MessageSquare, Globe, Camera } from 'lucide-react';
+import { Mic, MicOff, Volume2, X, MessageSquare, Globe, Camera, Loader } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const VoiceBotFAB = () => {
@@ -12,7 +12,8 @@ const VoiceBotFAB = () => {
     selectedLanguage,
     changeLanguage,
     startListening, 
-    stopListening 
+    stopListening,
+    stopSpeaking 
   } = useVoice();
   
   const [isOpen, setIsOpen] = useState(false);
@@ -92,6 +93,40 @@ const VoiceBotFAB = () => {
                       : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-800 dark:text-gray-200 rounded-tl-sm'
                   }`}>
                     <div>{msg.text}</div>
+                    
+                    {msg.status && !msg.text && (
+                       <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 italic text-sm mt-1">
+                          <Loader className="w-3 h-3 animate-spin" />
+                          <span>{msg.status}</span>
+                       </div>
+                    )}
+                    
+                    {msg.isStreaming && msg.text && (
+                       <span className="inline-block w-1.5 h-3 ml-1 bg-green-500 animate-pulse"></span>
+                    )}
+                    
+                    {/* Visual UI Summary Card */}
+                    {msg.uiData && (
+                      <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700 text-xs">
+                        <h4 className="font-bold text-gray-900 dark:text-gray-100 mb-1">{msg.uiData.title || 'Crop Summary'}</h4>
+                        <div className={`inline-block px-2 py-0.5 rounded-full mb-2 font-semibold ${
+                          ['EXCELLENT', 'HEALTHY', 'GOOD'].includes(msg.uiData.overall_status) ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                          ['NEEDS_ATTENTION', 'MODERATE'].includes(msg.uiData.overall_status) ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                          {msg.uiData.overall_status?.replace(/_/g, ' ')}
+                        </div>
+                        <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                          {msg.uiData.details?.map((detail, idx) => (
+                            <li key={idx} className="flex items-start gap-1">
+                              <span className="text-gray-400 mt-0.5">•</span>
+                              <span>{detail}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
                     {(msg.action === 'PROMPT_SCAN' || msg.delayedScan) && (
                       <button
                         onClick={() => {
@@ -122,13 +157,19 @@ const VoiceBotFAB = () => {
                 </div>
               )}
               
-              {/* AI Speaking Indicator */}
+              {/* AI Speaking Indicator & Stop Button */}
               {isSpeaking && (
-                <div className="flex justify-start">
-                   <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl rounded-tl-sm px-4 py-2 shadow-sm flex items-center gap-2">
+                <div className="flex justify-start flex-col gap-2">
+                   <div className="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl rounded-tl-sm px-4 py-2 shadow-sm flex items-center gap-2 max-w-[85%]">
                       <Volume2 size={16} className="text-blue-500 dark:text-blue-400 animate-pulse" />
-                      <span className="text-xs text-gray-500 dark:text-gray-400">Speaking...</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Cortex is speaking...</span>
                    </div>
+                   <button 
+                     onClick={stopSpeaking}
+                     className="self-start ml-2 flex items-center gap-1.5 text-xs font-bold bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 px-3 py-1.5 rounded-xl shadow-sm transition border border-red-200 dark:border-red-800/50"
+                   >
+                     <X size={14} /> Stop Speaking
+                   </button>
                 </div>
               )}
               
@@ -136,8 +177,11 @@ const VoiceBotFAB = () => {
             </div>
             
             {/* Input Hint */}
-            <div className="p-3 bg-white dark:bg-gray-800 text-center text-xs text-gray-400 border-t border-gray-100 dark:border-gray-700">
-              {isListening ? "Listening... Speak now." : "Tap the microphone to speak"}
+            <div className="p-3 bg-white dark:bg-gray-800 text-center text-xs text-gray-400 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
+              <span>{isListening ? "Listening... Speak now." : "Tap the microphone to speak"}</span>
+              {isSpeaking && (
+                <button onClick={stopSpeaking} className="text-red-500 hover:text-red-600 font-bold bg-red-50 px-2 py-1 rounded">Stop ⏹</button>
+              )}
             </div>
           </motion.div>
         )}

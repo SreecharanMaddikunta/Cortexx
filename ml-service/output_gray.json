@@ -1,0 +1,1 @@
+{"success": false, "status": "POOR_IMAGE_QUALITY", "is_valid_image": false, "crop_detected": false, "crop_type": null, "disease": null, "confidence": 0, "message": "The image quality is not sufficient for analysis. Please capture a clearer crop image."}
