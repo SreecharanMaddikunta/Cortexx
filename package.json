@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Smart India Hackathon SIH26131",
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix farmer-app\" \"npm run dev --prefix admin-app\" \"cd ml-service && .\\venv\\Scripts\\activate && uvicorn app:app --reload\"",
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix farmer-app\" \"npm run dev --prefix admin-app\" \"cd ml-service && .\\venv\\Scripts\\activate && uvicorn app:app --reload\" \"cd profit-optimizer && .\\venv\\Scripts\\activate && uvicorn main:app --port 8001 --reload\"",
     "studio": "npm run studio --prefix backend"
   },
   "devDependencies": {

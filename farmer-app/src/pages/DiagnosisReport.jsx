@@ -2,8 +2,21 @@ import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Info, CheckCircle, ArrowLeft, ShieldAlert, HeartPulse, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
+import html2pdf from 'html2pdf.js';
+import { useLanguage } from '../context/LanguageContext';
 
 const DiagnosisReport = () => {
+  const { t, language } = useLanguage();
+  const generatePDF = () => {
+    const element = document.getElementById('report-content');
+    html2pdf().set({
+      margin: [10, 10, 10, 10],
+      filename: 'Diagnosis_Report.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(element).save();
+  };
   const location = useLocation();
   const navigate = useNavigate();
   const report = location.state?.report;
@@ -30,10 +43,10 @@ const DiagnosisReport = () => {
           </div>
           
           <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-4">
-            {isInvalid ? '⚠️ No Crop Detected' : 
-             isUnsupported ? '⚠️ Crop Not Supported' : 
-             (isLowConf || isPoorQuality) ? '⚠️ Unable to Diagnose Confidently' : 
-             'Scan Failed'}
+            {isInvalid ? t('error_no_crop') : 
+             isUnsupported ? t('error_unsupported') : 
+             (isLowConf || isPoorQuality) ? t('error_low_conf') : 
+             t('error_scan_failed')}
           </h2>
 
           {isInvalid && (
@@ -128,7 +141,7 @@ const DiagnosisReport = () => {
       </div>
 
       {/* Content Area */}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-16 space-y-6">
+      <div id="report-content" className="max-w-3xl mx-auto px-4 sm:px-6 pt-16 space-y-6 bg-white dark:bg-gray-950 p-6 rounded-3xl">
         
         {/* Explanation & Disclaimer Card */}
         <div className="bg-white dark:bg-gray-900 rounded-3xl p-6 shadow-sm border border-gray-200 dark:border-gray-800">
@@ -302,16 +315,10 @@ const DiagnosisReport = () => {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 mt-8">
-          <a
-            href="/reports/Wheat_Aphid_Infestation_Diagnosis_Report.pdf"
-            download="Wheat_Aphid_Infestation_Diagnosis_Report.pdf"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-xl transition active:scale-95 flex items-center justify-center gap-2"
-          >
+          <button onClick={generatePDF} className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-xl transition active:scale-95 flex items-center justify-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Download PDF Report
-          </a>
+          </button>
           <button onClick={() => navigate('/dashboard')} className="flex-1 py-4 bg-gray-900 dark:bg-gray-800 hover:bg-black dark:hover:bg-gray-700 text-white font-bold rounded-2xl shadow-xl transition active:scale-95 flex items-center justify-center gap-2">
             <CheckCircle size={20} /> Acknowledge Report
           </button>

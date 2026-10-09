@@ -1,11 +1,12 @@
 const prisma = require('../prisma');
+const { translateObject } = require('../utils/translator');
 
 const processScan = async (req, res) => {
   try {
     // The user's ID is usually attached by auth middleware.
     // For MVP, we pass it in the body, or we decode JWT.
     const farmerId = req.user?.id || 1; 
-    const { imageBase64, cropType } = req.body;
+    const { imageBase64, cropType, language = 'en-IN' } = req.body;
 
     if (!imageBase64) {
       return res.status(400).json({ error: "Image is required" });
@@ -24,7 +25,10 @@ const processScan = async (req, res) => {
     if (!mlResponse.ok) {
         throw new Error(`Python API Error: ${mlResponse.status}`);
     }
-    const diagnosis = await mlResponse.json();
+    const rawDiagnosis = await mlResponse.json();
+    
+    // Translate the diagnosis using the provided language
+    const diagnosis = await translateObject(rawDiagnosis, language);
 
     // If validation failed in the ML layer, do not save a fake report. Return error safely to frontend.
     if (diagnosis.status && diagnosis.status !== "DIAGNOSIS_AVAILABLE") {

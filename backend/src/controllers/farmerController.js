@@ -297,7 +297,12 @@ const getAlerts = async (req, res) => {
           createdAt: new Date()
         }
       ];
-      return res.json(defaultAlerts);
+      let finalDefaultAlerts = defaultAlerts;
+      if (req.query.lang && req.query.lang !== 'en-IN' && req.query.lang !== 'en') {
+        const { translateObject } = require('../utils/translator');
+        finalDefaultAlerts = await translateObject(defaultAlerts, req.query.lang);
+      }
+      return res.json(finalDefaultAlerts);
     }
 
     const formatted = dbAlerts.map(a => ({
@@ -311,7 +316,13 @@ const getAlerts = async (req, res) => {
       createdAt: a.createdAt
     }));
 
-    res.json(formatted);
+    let finalAlerts = formatted;
+    if (req.query.lang && req.query.lang !== 'en-IN' && req.query.lang !== 'en') {
+      const { translateObject } = require('../utils/translator');
+      finalAlerts = await translateObject(formatted, req.query.lang);
+    }
+
+    res.json(finalAlerts);
   } catch (error) {
     console.error("Failed to fetch alerts:", error);
     res.status(500).json({ error: "Failed to fetch alerts" });

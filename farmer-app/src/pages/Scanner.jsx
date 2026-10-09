@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Camera, X, UploadCloud, Loader2, Image as ImageIcon, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import { useLanguage } from '../context/LanguageContext';
 
 const Scanner = () => {
   const navigate = useNavigate();
+  const { language } = useLanguage();
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   
@@ -45,7 +47,7 @@ const Scanner = () => {
     try {
       const response = await axios.post('http://localhost:5000/api/scans/process', {
         imageBase64: base64Image,
-        cropType: 'Tomato' // Hardcoded for MVP, ideally passed from context
+        cropType: 'Tomato', language: language // Hardcoded for MVP
       });
       
       setIsScanning(false);

@@ -11,7 +11,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [userName, setUserName] = useState('Farmer');
   const [crops, setCrops] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -73,11 +73,11 @@ const Dashboard = () => {
       clearInterval(pollInterval);
       window.removeEventListener('focus', onWindowFocus);
     };
-  }, [navigate]);
+  }, [navigate, language]);
 
   const fetchAlertsOnly = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/farmer/alerts');
+      const res = await axios.get(`http://localhost:5000/api/farmer/alerts?lang=${language}`);
       setAlerts(res.data || []);
     } catch (err) {
       console.error("Alert polling error:", err);
@@ -89,7 +89,7 @@ const Dashboard = () => {
       const [cropsRes, tasksRes, alertsRes] = await Promise.all([
         axios.get('http://localhost:5000/api/farmer/crops'),
         axios.get('http://localhost:5000/api/farmer/tasks'),
-        axios.get('http://localhost:5000/api/farmer/alerts')
+        axios.get(`http://localhost:5000/api/farmer/alerts?lang=${language}`)
       ]);
       setCrops(cropsRes.data);
       if (cropsRes.data.length > 0 && !selectedCropId) {
@@ -180,13 +180,13 @@ const Dashboard = () => {
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="bg-white text-red-700 text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider shadow-sm">
-                        URGENT ADVISORY
+                        {t('urgent_advisory') || 'URGENT ADVISORY'}
                       </span>
                       <span className="text-xs font-semibold text-red-100 flex items-center gap-1">
-                        <Radio size={12} className="animate-pulse" /> {critAlert.region || 'Regional Notice'}
+                        <Radio size={12} className="animate-pulse" /> {critAlert.region || t('regional_notice') || 'Regional Notice'}
                       </span>
                       <span className="text-xs text-red-200 font-mono">
-                        • {critAlert.time || 'Live'}
+                        • {critAlert.time || t('live_status') || 'Live'}
                       </span>
                     </div>
                     <p className="font-bold text-sm sm:text-base text-white mt-0.5">
@@ -362,6 +362,19 @@ const Dashboard = () => {
              </div>
              <Camera size={140} className="absolute -bottom-8 -right-8 text-white opacity-10 rotate-12" />
           </div>
+          
+          {/* Market Intelligence Card */}
+          <div onClick={() => navigate('/mandi')} className="bg-gradient-to-br from-amber-500 to-orange-500 dark:from-amber-600 dark:to-orange-700 rounded-3xl p-6 shadow-xl text-white relative overflow-hidden cursor-pointer hover:shadow-2xl transition-all hover:-translate-y-1 active:translate-y-0">
+             <div className="relative z-10">
+               <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold tracking-wider backdrop-blur-sm border border-white/30">{t('mi_tab_data')} & {t('mi_tab_calc')}</span>
+               <h2 className="text-3xl font-extrabold mt-4">{t('mi_title')}</h2>
+               <p className="text-amber-50 mt-2 font-medium">{t('mi_subtitle')}</p>
+               <div className="mt-6 flex items-center text-sm font-bold opacity-90 group">
+                 {t('mi_tab_data')} <ArrowRight className="ml-2 group-hover:translate-x-1 transition" size={18} />
+               </div>
+             </div>
+             <svg className="absolute -bottom-4 -right-4 text-white opacity-10 rotate-12" width="140" height="140" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+          </div>
 
           {/* Dynamic Tasks Widget (Clickable to open Tasks & History Modal, filtered by selected crop) */}
           {(() => {
@@ -373,28 +386,35 @@ const Dashboard = () => {
             return (
               <div 
                 onClick={() => setShowTasksModal(true)}
-                className="bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-md border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-lg transition group"
+                className="col-span-1 md:col-span-2 lg:col-span-3 bg-white dark:bg-gray-800 rounded-3xl p-5 md:p-6 shadow-sm border border-gray-100 dark:border-gray-700 cursor-pointer hover:shadow-md transition group"
               >
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h3 className="font-bold text-gray-900 dark:text-white text-lg group-hover:text-green-600 dark:group-hover:text-green-400 transition flex items-center gap-1.5">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 border-b border-gray-50 dark:border-gray-800 pb-3">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h3 className="font-bold text-gray-900 dark:text-white text-lg group-hover:text-green-600 dark:group-hover:text-green-400 transition">
                       {t('todaysTasks')}
-                      <ChevronRight size={18} className="text-gray-400 group-hover:translate-x-1 transition" />
                     </h3>
-                    {activeCrop && (
-                      <span className="inline-block mt-0.5 text-xs font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2.5 py-0.5 rounded-full border border-green-200 dark:border-green-800">
-                        {activeCrop.name}
+                    <div className="flex items-center gap-2">
+                      {activeCrop && (
+                        <span className="text-[11px] font-bold text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded-full border border-green-200 dark:border-green-800">
+                          {activeCrop.name}
+                        </span>
+                      )}
+                      <span className="text-[11px] text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-lg">
+                        {t('liveAi')}
                       </span>
-                    )}
+                    </div>
                   </div>
-                  <span className="text-xs text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-lg">
-                    {t('liveAi')}
+                  
+                  {/* Action Link (Top Right) */}
+                  <span className="text-sm font-semibold text-green-600 dark:text-green-400 flex items-center group-hover:translate-x-1 transition">
+                    {t('viewAllHistory')} <ArrowRight size={16} className="ml-1" />
                   </span>
                 </div>
 
-                <div className="space-y-3">
+                <div className="flex flex-col gap-3">
                   {activeCropTasks.length === 0 && (
-                    <div className="py-4 text-center">
+                    <div className="py-6 text-center bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-800">
                       <p className="text-gray-400 dark:text-gray-500 text-sm italic">{t('allCaughtUp')}</p>
                     </div>
                   )}
@@ -402,26 +422,19 @@ const Dashboard = () => {
                     const title = tData.titleKey ? t(tData.titleKey) : tData.title;
                     const desc = tData.descKey ? t(tData.descKey) : tData.desc;
                     return (
-                      <div key={tData.id} className={`flex gap-3 p-3 rounded-2xl border ${tData.type === 'urgent' ? 'bg-red-50/50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30' : 'bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700'}`}>
-                        <div className={`mt-1 shrink-0 ${tData.type === 'urgent' ? 'text-red-500 dark:text-red-400' : 'text-blue-500 dark:text-blue-400'}`}>
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${tData.type === 'urgent' ? 'bg-red-100 dark:bg-red-900/40' : 'bg-blue-100 dark:bg-blue-900/40'}`}>
-                            <div className="w-2 h-2 rounded-full bg-current"></div>
+                      <div key={tData.id} className={`flex items-start sm:items-center gap-4 p-4 rounded-2xl border ${tData.type === 'urgent' ? 'bg-red-50/50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30' : 'bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700'}`}>
+                        <div className={`shrink-0 mt-1 sm:mt-0 ${tData.type === 'urgent' ? 'text-red-500 dark:text-red-400' : 'text-blue-500 dark:text-blue-400'}`}>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tData.type === 'urgent' ? 'bg-red-100 dark:bg-red-900/40' : 'bg-blue-100 dark:bg-blue-900/40'}`}>
+                            <div className="w-2.5 h-2.5 rounded-full bg-current"></div>
                           </div>
                         </div>
-                        <div>
-                          <p className={`font-bold text-sm ${tData.type === 'urgent' ? 'text-red-900 dark:text-red-300' : 'text-gray-900 dark:text-gray-200'}`}>{title}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{desc}</p>
+                        <div className="flex-1">
+                          <p className={`font-bold text-sm sm:text-base ${tData.type === 'urgent' ? 'text-red-900 dark:text-red-300' : 'text-gray-900 dark:text-gray-200'}`}>{title}</p>
+                          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">{desc}</p>
                         </div>
                       </div>
                     );
                   })}
-                </div>
-
-                {/* Tap for History hint */}
-                <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700 text-center">
-                  <span className="text-xs font-bold text-green-600 dark:text-green-400 hover:underline">
-                    {t('viewAllHistory')}
-                  </span>
                 </div>
               </div>
             );

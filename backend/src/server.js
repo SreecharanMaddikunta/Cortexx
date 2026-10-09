@@ -17,12 +17,14 @@ const farmerRoutes = require('./routes/farmerRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const voiceRoutes = require('./routes/voiceRoutes');
 const scanRoutes = require('./routes/scanRoutes');
+const mandiRoutes = require('./routes/mandiRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/farmer', farmerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/voice', voiceRoutes);
 app.use('/api/scans', scanRoutes);
+app.use('/api/mandi', mandiRoutes);
 
 const PORT = process.env.PORT || 5000;
 

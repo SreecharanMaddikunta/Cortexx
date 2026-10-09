@@ -9,6 +9,7 @@ import Scanner from './pages/Scanner';
 import Login from './pages/Login';
 import DiagnosisReport from './pages/DiagnosisReport';
 import ScanHistory from './pages/ScanHistory';
+import MarketIntelligence from './pages/MarketIntelligence';
 import { Sun, Moon } from 'lucide-react';
 
 // Language Switcher Component for Navbar
@@ -99,6 +100,7 @@ function App() {
                 <Route path="/scanner" element={<Scanner />} />
                 <Route path="/diagnosis" element={<DiagnosisReport />} />
                 <Route path="/history" element={<ScanHistory />} />
+                <Route path="/mandi" element={<MarketIntelligence />} />
               </Route>
             </Routes>
           </Router>
