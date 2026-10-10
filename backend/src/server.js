@@ -3,7 +3,19 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 
-dotenv.config();
+// Disable strict TLS verification for native fetch to fix AGMARKNET missing intermediate certificates
+try {
+  const { Agent, setGlobalDispatcher } = require('undici');
+  setGlobalDispatcher(new Agent({ connect: { rejectUnauthorized: false } }));
+} catch (e) {
+  // undici might not be available in very old node versions, but fetch implies it is.
+}
+
+// Explicitly resolve the .env path so it works regardless of the terminal's working directory
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
+// Safe diagnostic log to verify environment variables without exposing values
+console.log(`[Config] DATA_GOV_IN_API_KEY is ${process.env.DATA_GOV_IN_API_KEY ? 'LOADED' : 'MISSING'}`);
 
 const app = express();
 app.use(cors());

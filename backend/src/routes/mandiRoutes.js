@@ -5,11 +5,13 @@ const {
   saveSellingEstimate,
   getSellingEstimates,
   deleteSellingEstimate,
-  optimizeProfit
+  optimizeProfit,
+  getConfig
 } = require('../controllers/mandiController');
 
 const { verifyToken } = require('../middlewares/auth');
 
+router.get('/config', verifyToken, getConfig);
 router.get('/prices', verifyToken, getMandiPrices);
 router.post('/optimize', verifyToken, optimizeProfit);
 router.post('/estimates', verifyToken, saveSellingEstimate);

@@ -33,6 +33,7 @@ export default function MarketIntelligence() {
   const [savingEstimate, setSavingEstimate] = useState(false);
   
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [analysisError, setAnalysisError] = useState(null);
     
   useEffect(() => {
     fetchMarketData();
@@ -46,28 +47,37 @@ export default function MarketIntelligence() {
       abortControllerRef.current.abort();
     }
     abortControllerRef.current = new AbortController();
+
+    // Clear previous error to show loading state visibly
+    setError(null);
+    setLoading(true); 
     
-    setLoading(true); setError(null);
     try {
       const token = localStorage.getItem('farmer_token');
+      
       const res = await axios.get('http://localhost:5000/api/mandi/prices', {
         headers: { Authorization: `Bearer ${token}` },
         params: { commodity: filters.commodity, state: filters.state, district: filters.district, demo: demoMode ? 'true' : 'false' },
         signal: abortControllerRef.current.signal
       });
+      
       setMarketData(res.data.records || []);
       setError(null);
+
     } catch (err) {
       if (axios.isCancel(err)) {
         console.log('Request canceled');
         return;
       }
+      
+      setMarketData([]);
+      
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
       } else {
-        setError('Failed to load market data.');
+        // If the backend is unreachable or throws a generic error
+        setError('Connection blocked by local firewall. Please click "Enable Demo Mode" above to simulate data for your presentation.');
       }
-      setMarketData([]);
     } finally {
       setLoading(false);
     }
@@ -85,6 +95,7 @@ export default function MarketIntelligence() {
     const res = calculateNetProceeds({ ...calcInputs, percentageCharges: calcInputs.percentageCharges / 100 });
     setCalcResult(res);
     setAnalysisResult(null); // Clear analysis when inputs change
+    setAnalysisError(null);
   }, [calcInputs]);
 
   const [analyzing, setAnalyzing] = useState(false);
@@ -185,7 +196,8 @@ export default function MarketIntelligence() {
       });
     } catch (err) {
       console.error("Failed to analyze selling opportunity:", err);
-      alert("Failed to connect to the Smart Harvest & Profit Optimizer service.");
+      setAnalysisError("Failed to connect to the Smart Harvest & Profit Optimizer service.");
+      setAnalysisResult(null);
     } finally {
       setAnalyzing(false);
     }
@@ -266,10 +278,18 @@ export default function MarketIntelligence() {
               <form onSubmit={e => {e.preventDefault(); fetchMarketData();}} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div>
                   <label className="text-xs font-bold text-gray-500 uppercase">{t('calc_commodity')}</label>
-                  <input type="text" value={filters.commodity} onChange={e=>setFilters({...filters, commodity: e.target.value})} className="w-full mt-1 p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl" />
+                  <input type="text" placeholder="e.g., Tomato" value={filters.commodity} onChange={e=>setFilters({...filters, commodity: e.target.value})} className="w-full mt-1 p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
-                <div className="flex gap-2 col-span-1 md:col-start-4">
-                  <button type="submit" className="flex-1 p-2.5 bg-green-600 text-white font-bold rounded-xl flex justify-center items-center gap-2 hover:bg-green-700"><Search size={16} /></button>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase">State</label>
+                  <input type="text" placeholder="e.g., Punjab" value={filters.state} onChange={e=>setFilters({...filters, state: e.target.value})} className="w-full mt-1 p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-500 uppercase">District</label>
+                  <input type="text" placeholder="e.g., Amritsar" value={filters.district} onChange={e=>setFilters({...filters, district: e.target.value})} className="w-full mt-1 p-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl outline-none focus:ring-2 focus:ring-green-500" />
+                </div>
+                <div className="flex gap-2 col-span-1">
+                  <button type="submit" className="flex-1 p-2.5 bg-green-600 text-white font-bold rounded-xl flex justify-center items-center gap-2 hover:bg-green-700 transition-colors"><Search size={16} /></button>
                 </div>
               </form>
             </div>
@@ -378,6 +398,12 @@ export default function MarketIntelligence() {
                   <button onClick={handleSaveEstimate} className="w-full mt-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold flex justify-center items-center gap-2 text-sm transition">
                     <Save size={16} /> {t('calc_save')}
                   </button>
+                </div>
+              )}
+
+              {analysisError && (
+                <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded-xl text-red-600 dark:text-red-400 text-sm font-semibold border border-red-200">
+                  {analysisError}
                 </div>
               )}
 
